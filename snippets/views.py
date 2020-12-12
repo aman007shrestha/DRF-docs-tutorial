@@ -147,7 +147,7 @@ class SnippetDetail(mixins.RetrieveModelMixin,
 	def delete(self, request, *args, **kwargs):
 		return self.destroy(request, *args, **kwargs)
 	
-'''
+
 
 # more shorter approach
 from rest_framework import generics
@@ -202,3 +202,42 @@ class SnippetHighlight(generics.GenericAPIView):
 	def get(self, request, *args, **kwargs):
 		snippet = self.get_object()
 		return Response(snippet.highlighted)
+'''
+
+# part 6
+from rest_framework import viewsets
+from django.contrib.auth.models import User
+from .models import Snippet
+from .serializers import SnippetSerializer, UserSerializer
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+	"""
+	This viewset automatically provides list and retrive actions.
+	"""
+	queryset = User.objects.all()
+	serializer_class = UserSerializer
+
+from rest_framework import renderers
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import permissions
+from .permissions import IsOwnerOrReadOnly
+
+class SnippetViewSet(viewsets.ModelViewSet):
+	"""
+	This viewset automatically provides list, create, retrieve,
+	update and destroy actions.
+
+	Additionally we need to provide an extra highlight action.
+	"""
+	queryset = Snippet.objects.all()
+	serializer_class = SnippetSerializer
+	permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+	@action(detail=True, renderer_classes=[renderers.StaticHTMLRenderer])
+	def highlight(self, request, *args, **kwargs):
+		snippet = self.get_object()
+		return Response(snippet.highlighted)
+
+	def perform_create(self, serializer):
+		serializer.save(owner=self.request.user)
