@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Snippet
-from .serializers import SnippetSerializer
+from .serializers import SnippetSerializer, UserSerializer
 
 
 
@@ -40,7 +40,7 @@ def index(request):
 	STYLE_CHOICES = sorted([(item, item) for item in get_all_styles()])
 	return JsonResponse(LANGUAGE_CHOICES, safe=False)
 
-	
+
 #@csrf_exempt
 @api_view(['GET', 'PUT', 'DELETE'])
 def snippet_detail(request, pk, format=None):
@@ -152,12 +152,30 @@ class SnippetDetail(mixins.RetrieveModelMixin,
 
 # more shorter approach
 from rest_framework import generics
+from rest_framework import permissions
+from .permissions import IsOwnerOrReadOnly
 
 class SnippetList(generics.ListCreateAPIView):
 	queryset = Snippet.objects.all()
 	serializer_class = SnippetSerializer
+	permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+	def perform_create(self, serializer):
+		serializer.save(owner=self.request.user)
 
 class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
 	queryset = Snippet.objects.all()
 	serializer_class = SnippetSerializer
+	permission_classes = [permissions.IsAuthenticatedOrReadOnly,
+	IsOwnerOrReadOnly]
 
+
+
+from django.contrib.auth.models import User
+class UserList(generics.ListAPIView):
+	queryset = User.objects.all()
+	serializer_class = UserSerializer
+
+class UserDetail(generics.RetrieveAPIView):
+	queryset = User.objects.all()
+	serializer_class = UserSerializer
